@@ -1,0 +1,12 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      // Tipos da versão React Native do Firebase Auth (onde existe getReactNativePersistence)
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}
