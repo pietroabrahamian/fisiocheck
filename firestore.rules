@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// Regras de segurança do FisioCheck.
+// - Paciente: cria o próprio perfil e os próprios check-ins; lê só o que é dele.
+// - Dono: lê tudo e configura a clínica e os profissionais.
+// - Ninguém altera o próprio "role" pelo app (o dono é definido no Console do Firebase).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dono';
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isOwner());
+      // Todo cadastro feito pelo app nasce como paciente
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['name', 'email', 'role', 'createdAt'])
+        && request.resource.data.role == 'paciente'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2;
+      allow update, delete: if false;
+    }
+
+    match /clinica/{docId} {
+      allow read: if signedIn();
+      allow write: if isOwner()
+        && request.resource.data.name is string
+        && request.resource.data.latitude is number
+        && request.resource.data.longitude is number
+        && request.resource.data.radiusMeters is int
+        && request.resource.data.radiusMeters >= 20
+        && request.resource.data.radiusMeters <= 2000;
+    }
+    match /profissionais/{professionalId} {
+      allow read: if signedIn();
+      allow create, update: if isOwner()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.active is bool;
+      allow delete: if false;
+    }
+
+    match /checkins/{checkinId} {
+      // get: o ID começa com o uid do paciente ({uid}_{data}); list: filtrando pelo próprio patientId
+      allow get: if signedIn() && (checkinId.matches(request.auth.uid + '_.*') || isOwner());
+      allow list: if signedIn() && (resource.data.patientId == request.auth.uid || isOwner());
+
+      // O paciente só cria o próprio check-in, com o ID {uid}_{data}, para um profissional existente
+      allow create: if signedIn()
+        && request.resource.data.patientId == request.auth.uid
+        && checkinId == request.auth.uid + '_' + request.resource.data.date
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.week.matches('^[0-9]{4}-W[0-9]{2}$')
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/profissionais/$(request.resource.data.professionalId));
+
+      // Check-in não é editado nem apagado pelo app
+      allow update, delete: if false;
+    }
+  }
+}
