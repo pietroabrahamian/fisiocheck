@@ -14,7 +14,7 @@ import { Checkin, Clinic, Professional } from "@/types"
 import { toDateKey, toWeekKey } from "@/utils/dates"
 import { distanceInMeters, formatDistance } from "@/utils/distance"
 import { AppError } from "@/utils/errors"
-import { Coords, getCurrentCoords } from "./locationService"
+import { getCurrentCoords } from "./locationService"
 
 const checkinsRef = collection(firestore, "checkins")
 
@@ -46,31 +46,16 @@ type CreateCheckinInput = {
     patientId: string
     patientName: string
     professional: Professional
-    clinics: Clinic[]
+    /** Clínica escolhida pelo paciente */
+    clinic: Clinic
 }
 
-type ClinicDistance = { clinic: Clinic; distance: number }
-
-function nearest(items: ClinicDistance[]): ClinicDistance {
-    return items.reduce((best, current) => (current.distance < best.distance ? current : best))
-}
-
-/** Clínica onde o paciente está (dentro do raio) ou, se nenhuma, a mais próxima — para mostrar a distância */
-function findClinic(coords: Coords, clinics: Clinic[]): ClinicDistance & { inside: boolean } {
-    const all = clinics.map((clinic) => ({ clinic, distance: distanceInMeters(coords, clinic) }))
-    const inside = all.filter((item) => item.distance <= item.clinic.radiusMeters)
-    return inside.length > 0 ? { ...nearest(inside), inside: true } : { ...nearest(all), inside: false }
-}
-
-export async function createCheckin({ patientId, patientName, professional, clinics }: CreateCheckinInput): Promise<Checkin> {
-    if (clinics.length === 0) throw new AppError("Nenhuma clínica cadastrada ainda. Avise a recepção.")
-
+export async function createCheckin({ patientId, patientName, professional, clinic }: CreateCheckinInput): Promise<Checkin> {
     const coords = await getCurrentCoords()
-    // O paciente não escolhe a unidade: vale a clínica onde ele está
-    const { clinic, distance, inside } = findClinic(coords, clinics)
-    if (!inside) {
+    const distance = distanceInMeters(coords, clinic)
+    if (distance > clinic.radiusMeters) {
         throw new AppError(
-            `Você está a ${formatDistance(distance)} da clínica mais próxima (${clinic.name}). O check-in só é liberado a até ${formatDistance(clinic.radiusMeters)}.`
+            `Você está a ${formatDistance(distance)} da ${clinic.name}. O check-in só é liberado a até ${formatDistance(clinic.radiusMeters)}. Confira se escolheu a clínica certa.`
         )
     }
 

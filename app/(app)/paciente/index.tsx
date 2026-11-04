@@ -12,6 +12,33 @@ import { colors, radius } from "@/theme/colors"
 import { formatTime, formatWeekday, formatWeekRange, toDateKey, toWeekKey, weekDays } from "@/utils/dates"
 import { getErrorMessage } from "@/utils/errors"
 
+type OptionProps = {
+    title: string
+    subtitle?: string
+    selected: boolean
+    disabled: boolean
+    onPress: () => void
+}
+
+/** Opção de escolha única (clínica ou profissional) */
+function Option({ title, subtitle, selected, disabled, onPress }: OptionProps) {
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            style={[styles.option, selected && styles.optionSelected]}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selected }}
+        >
+            <Ionicons name={selected ? "radio-button-on" : "radio-button-off"} size={20} color={selected ? colors.accent : colors.ink3} />
+            <View style={styles.optionTexts}>
+                <Text style={styles.optionName}>{title}</Text>
+                {subtitle ? <Text style={styles.optionSpecialty}>{subtitle}</Text> : null}
+            </View>
+        </Pressable>
+    )
+}
+
 export default function CheckinScreen() {
     const { user } = useAuth()
     const profile = useProfile()
@@ -20,6 +47,7 @@ export default function CheckinScreen() {
     const checkins = useMyCheckins()
     const createCheckin = useCreateCheckin()
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [chosenClinicId, setChosenClinicId] = useState<string | null>(null)
 
     const queries = [profile, clinics, professionals, checkins]
     const today = new Date()
@@ -30,6 +58,10 @@ export default function CheckinScreen() {
     const weekCheckins = useMemo(() => (checkins.data ?? []).filter((item) => item.week === weekKey), [checkins.data, weekKey])
     const todayCheckin = weekCheckins.find((item) => item.date === todayKey)
     const checkedDays = new Set(weekCheckins.map((item) => item.date))
+    // Com uma clínica só, ela já vem marcada
+    const clinicList = clinics.data ?? []
+    const selectedClinic =
+        clinicList.find((item) => item.id === chosenClinicId) ?? (clinicList.length === 1 ? clinicList[0] : undefined)
 
     function refetchAll() {
         queries.forEach((query) => query.refetch())
@@ -40,12 +72,17 @@ export default function CheckinScreen() {
         createCheckin.reset() // limpa o erro da tentativa anterior
     }
 
+    function selectClinic(id: string) {
+        setChosenClinicId(id)
+        createCheckin.reset()
+    }
+
     function handleCheckin() {
         const professional = activeProfessionals.find((item) => item.id === selectedId)
-        if (!professional || !clinics.data || !profile.data || !user) return
+        if (!professional || !selectedClinic || !profile.data || !user) return
 
         createCheckin.mutate(
-            { patientId: user.uid, patientName: profile.data.name, professional, clinics: clinics.data },
+            { patientId: user.uid, patientName: profile.data.name, professional, clinic: selectedClinic },
             {
                 onSuccess: (checkin) => {
                     setSelectedId(null)
@@ -114,31 +151,32 @@ export default function CheckinScreen() {
                     />
                 ) : (
                     <>
+                        <Text style={styles.hint}>Em qual clínica você está?</Text>
+                        <View style={styles.options}>
+                            {clinicList.map((item) => (
+                                <Option
+                                    key={item.id}
+                                    title={item.name}
+                                    subtitle={item.address}
+                                    selected={item.id === selectedClinic?.id}
+                                    disabled={createCheckin.isPending}
+                                    onPress={() => selectClinic(item.id)}
+                                />
+                            ))}
+                        </View>
+
                         <Text style={styles.hint}>Com quem é a sua sessão hoje?</Text>
                         <View style={styles.options}>
-                            {activeProfessionals.map((item) => {
-                                const selected = item.id === selectedId
-                                return (
-                                    <Pressable
-                                        key={item.id}
-                                        onPress={() => selectProfessional(item.id)}
-                                        disabled={createCheckin.isPending}
-                                        style={[styles.option, selected && styles.optionSelected]}
-                                        accessibilityRole="radio"
-                                        accessibilityState={{ checked: selected }}
-                                    >
-                                        <Ionicons
-                                            name={selected ? "radio-button-on" : "radio-button-off"}
-                                            size={20}
-                                            color={selected ? colors.accent : colors.ink3}
-                                        />
-                                        <View style={styles.optionTexts}>
-                                            <Text style={styles.optionName}>{item.name}</Text>
-                                            {item.specialty ? <Text style={styles.optionSpecialty}>{item.specialty}</Text> : null}
-                                        </View>
-                                    </Pressable>
-                                )
-                            })}
+                            {activeProfessionals.map((item) => (
+                                <Option
+                                    key={item.id}
+                                    title={item.name}
+                                    subtitle={item.specialty}
+                                    selected={item.id === selectedId}
+                                    disabled={createCheckin.isPending}
+                                    onPress={() => selectProfessional(item.id)}
+                                />
+                            ))}
                         </View>
 
                         {checkinError ? (
@@ -154,10 +192,10 @@ export default function CheckinScreen() {
                             title={createCheckin.isPending ? "Confirmando localização..." : "Fazer check-in"}
                             onPress={handleCheckin}
                             loading={createCheckin.isPending}
-                            disabled={!selectedId}
+                            disabled={!selectedId || !selectedClinic}
                         />
                         <Text style={styles.footnote}>
-                            Usamos sua localização só agora, para confirmar em qual clínica você está.
+                            Usamos sua localização só agora, para confirmar que você está na clínica escolhida.
                         </Text>
                     </>
                 )}
