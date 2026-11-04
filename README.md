@@ -22,7 +22,7 @@ O projeto Firebase já está configurado e estas contas já existem:
 | Dono (admin) | `admin@gmail.com` | `Admin1234` |
 | Paciente | `paciente@gmail.com` | `Paciente1234` |
 
-A **Clínica FIAP** (Av. Paulista, 1106 - Bela Vista, São Paulo - SP) já está cadastrada. Para testar o check-in de onde você estiver:
+Já estão cadastradas a **Clinica Fiap Paulista** (Av. Paulista, 1106 - Bela Vista, São Paulo - SP) e a **Clinica Sede** (R. Nova dos Portugueses, 365 - São Paulo - SP), com profissionais ativos. Para testar o check-in de onde você estiver:
 
 1. Entre como **dono**, abra a aba **Clínicas** e cadastre uma clínica nova tocando em **Usar minha localização atual** (ou digitando um endereço e tocando em **Buscar endereço**).
 2. Saia, entre como **paciente**, escolha essa clínica e o profissional e toque em **Fazer check-in**.
