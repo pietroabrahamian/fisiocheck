@@ -6,10 +6,12 @@ CheckPoint 3 — Mobile Application Development (FIAP).
 
 ### Integrantes
 
-- Pietro Abrahamian
-- Lucas
-- Lucca
-- Pedro
+| Nome | RM |
+|---|---|
+| Pietro Ferreira Gomes Abrahamian | 561469 |
+| Lucas Grillo Alcântara | 561413 |
+| Lucca Ramos Mussumecci | 562027 |
+| Pedro Peres Benitez | 561792 |
 
 ### Contas para teste
 
