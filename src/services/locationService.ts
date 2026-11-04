@@ -49,3 +49,36 @@ export async function getCurrentCoords(): Promise<Coords> {
         throw new AppError("Não foi possível obter sua localização. Tente novamente.")
     }
 }
+
+/** Endereço digitado → coordenadas (geocodificação do próprio aparelho) */
+export async function geocodeAddress(address: string): Promise<Coords> {
+    // No Android a geocodificação também exige a permissão de localização
+    const { status } = await Location.requestForegroundPermissionsAsync()
+    if (status !== "granted") {
+        throw new LocationPermissionError("Precisamos da permissão de localização para buscar o endereço.")
+    }
+
+    let results: Location.LocationGeocodedLocation[]
+    try {
+        results = await withTimeout(Location.geocodeAsync(address), TIMEOUT_MS)
+    } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError("Não foi possível buscar o endereço agora. Confira a internet ou use a localização atual.")
+    }
+    if (results.length === 0) {
+        throw new AppError("Endereço não encontrado. Inclua número, cidade e estado e tente de novo.")
+    }
+    return { latitude: results[0].latitude, longitude: results[0].longitude }
+}
+
+/** Coordenadas → endereço legível. Se o aparelho não souber, devolve vazio (o endereço é opcional nesse caso). */
+export async function describeCoords(coords: Coords): Promise<string> {
+    try {
+        const [place] = await Location.reverseGeocodeAsync(coords)
+        if (!place) return ""
+        const street = [place.street, place.streetNumber].filter(Boolean).join(", ")
+        return [street, place.district, place.city ?? place.subregion, place.region].filter(Boolean).join(" - ")
+    } catch {
+        return ""
+    }
+}

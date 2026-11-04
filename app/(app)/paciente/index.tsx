@@ -6,7 +6,7 @@ import { Card } from "@/components/Card"
 import { Screen } from "@/components/Screen"
 import { ErrorView, LoadingView, Notice } from "@/components/StateViews"
 import { useAuth } from "@/contexts/AuthContext"
-import { useClinic, useCreateCheckin, useMyCheckins, useProfessionals, useProfile } from "@/hooks/queries"
+import { useClinics, useCreateCheckin, useMyCheckins, useProfessionals, useProfile } from "@/hooks/queries"
 import { LocationPermissionError } from "@/services/locationService"
 import { colors, radius } from "@/theme/colors"
 import { formatTime, formatWeekday, formatWeekRange, toDateKey, toWeekKey, weekDays } from "@/utils/dates"
@@ -15,13 +15,13 @@ import { getErrorMessage } from "@/utils/errors"
 export default function CheckinScreen() {
     const { user } = useAuth()
     const profile = useProfile()
-    const clinic = useClinic()
+    const clinics = useClinics()
     const professionals = useProfessionals()
     const checkins = useMyCheckins()
     const createCheckin = useCreateCheckin()
     const [selectedId, setSelectedId] = useState<string | null>(null)
 
-    const queries = [profile, clinic, professionals, checkins]
+    const queries = [profile, clinics, professionals, checkins]
     const today = new Date()
     const todayKey = toDateKey(today)
     const weekKey = toWeekKey(today)
@@ -42,14 +42,14 @@ export default function CheckinScreen() {
 
     function handleCheckin() {
         const professional = activeProfessionals.find((item) => item.id === selectedId)
-        if (!professional || !clinic.data || !profile.data || !user) return
+        if (!professional || !clinics.data || !profile.data || !user) return
 
         createCheckin.mutate(
-            { patientId: user.uid, patientName: profile.data.name, professional, clinic: clinic.data },
+            { patientId: user.uid, patientName: profile.data.name, professional, clinics: clinics.data },
             {
                 onSuccess: (checkin) => {
                     setSelectedId(null)
-                    Alert.alert("Check-in feito!", `Sessão de hoje registrada com ${checkin.professionalName}. Boa sessão!`)
+                    Alert.alert("Check-in feito!", `Sessão de hoje registrada na ${checkin.clinicName} com ${checkin.professionalName}. Boa sessão!`)
                 },
             }
         )
@@ -68,7 +68,7 @@ export default function CheckinScreen() {
     return (
         <Screen
             title={`Olá, ${profile.data?.name.split(" ")[0]}`}
-            subtitle={clinic.data?.name ?? "FisioCheck"}
+            subtitle={clinics.data?.length === 1 ? clinics.data[0].name : "FisioCheck"}
             refreshing={queries.some((query) => query.isRefetching)}
             onRefresh={refetchAll}
         >
@@ -98,13 +98,13 @@ export default function CheckinScreen() {
                     <Notice
                         tone="success"
                         icon="checkmark-circle"
-                        message={`Check-in feito às ${formatTime(todayCheckin.createdAt)} com ${todayCheckin.professionalName}. Até a próxima sessão!`}
+                        message={`Check-in feito às ${formatTime(todayCheckin.createdAt)}${todayCheckin.clinicName ? ` na ${todayCheckin.clinicName}` : ""} com ${todayCheckin.professionalName}. Até a próxima sessão!`}
                     />
-                ) : !clinic.data ? (
+                ) : clinics.data?.length === 0 ? (
                     <Notice
                         tone="warning"
                         icon="alert-circle"
-                        message="A clínica ainda não configurou o local de check-in. Avise a recepção."
+                        message="Nenhuma clínica cadastrada para check-in ainda. Avise a recepção."
                     />
                 ) : activeProfessionals.length === 0 ? (
                     <Notice
@@ -157,7 +157,7 @@ export default function CheckinScreen() {
                             disabled={!selectedId}
                         />
                         <Text style={styles.footnote}>
-                            Usamos sua localização só agora, para confirmar que você está na clínica.
+                            Usamos sua localização só agora, para confirmar em qual clínica você está.
                         </Text>
                     </>
                 )}

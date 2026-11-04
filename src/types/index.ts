@@ -7,7 +7,9 @@ export type UserProfile = {
 }
 
 export type Clinic = {
+    id: string
     name: string
+    address: string
     latitude: number
     longitude: number
     /** Distância máxima, em metros, para aceitar o check-in */
@@ -26,6 +28,8 @@ export type Checkin = {
     id: string
     patientId: string
     patientName: string
+    clinicId: string
+    clinicName: string
     professionalId: string
     professionalName: string
     /** AAAA-MM-DD, no horário do aparelho */

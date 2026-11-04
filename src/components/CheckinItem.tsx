@@ -22,6 +22,7 @@ export function CheckinItem({ checkin, showPatient }: Props) {
                 </Text>
                 <Text style={styles.subtitle} numberOfLines={1}>
                     {showPatient ? `${formatLongDate(checkin.date)} · ` : ""}com {checkin.professionalName}
+                    {checkin.clinicName ? ` · ${checkin.clinicName}` : ""}
                 </Text>
             </View>
             <Text style={styles.time}>{formatTime(checkin.createdAt)}</Text>

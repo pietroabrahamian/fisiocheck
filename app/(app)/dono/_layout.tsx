@@ -6,7 +6,7 @@ export default function OwnerLayout() {
             role="dono"
             tabs={[
                 { name: "index", title: "Resumo", icon: "stats-chart-outline" },
-                { name: "clinica", title: "Clínica", icon: "business-outline" },
+                { name: "clinica", title: "Clínicas", icon: "business-outline" },
                 { name: "perfil", title: "Perfil", icon: "person-outline" },
             ]}
         />

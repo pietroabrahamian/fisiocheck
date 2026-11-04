@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/AuthContext"
 import { createCheckin, listPatientCheckins, listWeekCheckins } from "@/services/checkinService"
-import { getClinic, saveClinic } from "@/services/clinicService"
+import { ClinicInput, listClinics, saveClinic } from "@/services/clinicService"
 import { getProfile } from "@/services/profileService"
 import { addProfessional, listProfessionals, setProfessionalActive } from "@/services/professionalService"
-import { Clinic, Professional } from "@/types"
+import { Professional } from "@/types"
 
 // Chaves do cache do TanStack Query. Invalidar uma chave faz as telas buscarem de novo.
 export const queryKeys = {
     profile: (uid: string) => ["profile", uid] as const,
-    clinic: ["clinic"] as const,
+    clinics: ["clinics"] as const,
     professionals: ["professionals"] as const,
     checkins: ["checkins"] as const,
     myCheckins: (uid: string) => ["checkins", "patient", uid] as const,
@@ -34,8 +34,8 @@ export function useProfile() {
     })
 }
 
-export function useClinic() {
-    return useQuery({ queryKey: queryKeys.clinic, queryFn: getClinic })
+export function useClinics() {
+    return useQuery({ queryKey: queryKeys.clinics, queryFn: listClinics })
 }
 
 export function useProfessionals() {
@@ -66,8 +66,8 @@ export function useCreateCheckin() {
 export function useSaveClinic() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: (clinic: Clinic) => saveClinic(clinic),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.clinic }),
+        mutationFn: ({ clinic, id }: { clinic: ClinicInput; id?: string }) => saveClinic(clinic, id),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.clinics }),
     })
 }
 

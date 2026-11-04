@@ -59,6 +59,10 @@ export default function SummaryScreen() {
         [checkins]
     )
     const byPatient = useMemo(() => countBy(checkins ?? [], (c) => c.patientId, (c) => c.patientName), [checkins])
+    const byClinic = useMemo(
+        () => countBy(checkins ?? [], (c) => c.clinicId, (c) => c.clinicName || "Sem clínica registrada"),
+        [checkins]
+    )
 
     const total = checkins?.length ?? 0
 
@@ -116,6 +120,12 @@ export default function SummaryScreen() {
                                 <Text style={styles.cardHint}>Base para o pagamento por aula.</Text>
                                 <CountList items={byProfessional} unit={["aula", "aulas"]} />
                             </Card>
+
+                            {byClinic.length > 1 ? (
+                                <Card title="Aulas por clínica">
+                                    <CountList items={byClinic} unit={["aula", "aulas"]} />
+                                </Card>
+                            ) : null}
 
                             <Card title="Presenças por paciente">
                                 <CountList items={byPatient} unit={["vez", "vezes"]} />

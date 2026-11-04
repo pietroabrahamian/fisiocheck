@@ -14,7 +14,7 @@ import { Checkin, Clinic, Professional } from "@/types"
 import { toDateKey, toWeekKey } from "@/utils/dates"
 import { distanceInMeters, formatDistance } from "@/utils/distance"
 import { AppError } from "@/utils/errors"
-import { getCurrentCoords } from "./locationService"
+import { Coords, getCurrentCoords } from "./locationService"
 
 const checkinsRef = collection(firestore, "checkins")
 
@@ -24,6 +24,9 @@ function toCheckin(document: QueryDocumentSnapshot<DocumentData>): Checkin {
         id: document.id,
         patientId: data.patientId,
         patientName: data.patientName,
+        // Check-ins anteriores às várias clínicas não têm esses campos
+        clinicId: data.clinicId ?? "",
+        clinicName: data.clinicName ?? "",
         professionalId: data.professionalId,
         professionalName: data.professionalName,
         date: data.date,
@@ -43,17 +46,34 @@ type CreateCheckinInput = {
     patientId: string
     patientName: string
     professional: Professional
-    clinic: Clinic
+    clinics: Clinic[]
 }
 
-export async function createCheckin({ patientId, patientName, professional, clinic }: CreateCheckinInput): Promise<Checkin> {
+type ClinicDistance = { clinic: Clinic; distance: number }
+
+function nearest(items: ClinicDistance[]): ClinicDistance {
+    return items.reduce((best, current) => (current.distance < best.distance ? current : best))
+}
+
+/** Clínica onde o paciente está (dentro do raio) ou, se nenhuma, a mais próxima — para mostrar a distância */
+function findClinic(coords: Coords, clinics: Clinic[]): ClinicDistance & { inside: boolean } {
+    const all = clinics.map((clinic) => ({ clinic, distance: distanceInMeters(coords, clinic) }))
+    const inside = all.filter((item) => item.distance <= item.clinic.radiusMeters)
+    return inside.length > 0 ? { ...nearest(inside), inside: true } : { ...nearest(all), inside: false }
+}
+
+export async function createCheckin({ patientId, patientName, professional, clinics }: CreateCheckinInput): Promise<Checkin> {
+    if (clinics.length === 0) throw new AppError("Nenhuma clínica cadastrada ainda. Avise a recepção.")
+
     const coords = await getCurrentCoords()
-    const distance = distanceInMeters(coords, clinic)
-    if (distance > clinic.radiusMeters) {
+    // O paciente não escolhe a unidade: vale a clínica onde ele está
+    const { clinic, distance, inside } = findClinic(coords, clinics)
+    if (!inside) {
         throw new AppError(
-            `Você está a ${formatDistance(distance)} da clínica. O check-in só é liberado a até ${formatDistance(clinic.radiusMeters)}.`
+            `Você está a ${formatDistance(distance)} da clínica mais próxima (${clinic.name}). O check-in só é liberado a até ${formatDistance(clinic.radiusMeters)}.`
         )
     }
+
     const now = new Date()
     const date = toDateKey(now)
     // O ID com a data garante no máximo um check-in por paciente por dia
@@ -61,6 +81,8 @@ export async function createCheckin({ patientId, patientName, professional, clin
     const checkin: Omit<Checkin, "id" | "createdAt"> = {
         patientId,
         patientName,
+        clinicId: clinic.id,
+        clinicName: clinic.name,
         professionalId: professional.id,
         professionalName: professional.name,
         date,
