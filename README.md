@@ -115,16 +115,17 @@ O próprio paciente faz o **check-in pelo celular** quando chega para a sessão.
 
 - Node.js 20 ou superior
 - App **Expo Go** no celular, ou um emulador Android
-- Um projeto no [Firebase](https://console.firebase.google.com)
 
-### Configurar o Firebase
+O app já vem apontando para o projeto Firebase **fisiocheck-fiap** (em [irebase.ts](src/config/firebase.ts)), onde estão as contas de teste. Não é preciso configurar nada para testar.
+
+### Usar outro projeto Firebase (opcional)
 
 1. Crie um projeto no Console do Firebase.
 2. Em **Authentication > Método de login**, ative **E-mail/senha**.
 3. Em **Firestore Database**, crie o banco.
-4. Em **Firestore Database > Regras**, cole o conteúdo de [`firestore.rules`](firestore.rules) e publique.
+4. Em **Firestore Database > Regras**, cole o conteúdo de [irestore.rules](firestore.rules) e publique.
 5. Em **Configurações do projeto > Seus apps**, crie um **App da Web** e copie a configuração.
-6. Copie `.env.example` para `.env` e preencha com esses valores.
+6. Copie .env.example para .env e preencha com esses valores. O .env tem prioridade sobre o projeto padrão.
 
 ### Instalar e iniciar
 
