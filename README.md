@@ -28,7 +28,7 @@ A **Clínica FIAP** (Av. Paulista, 1106 - Bela Vista, São Paulo - SP) já está
 2. Saia, entre como **paciente**, escolha essa clínica e o profissional e toque em **Fazer check-in**.
 3. Volte como dono e veja a aula no **Resumo semanal**.
 
-> No emulador Android dá para simular a posição em **Extended controls (⋯) > Location**. Com as coordenadas da FIAP Paulista, o check-in na Clínica FIAP é aceito.
+> **Atenção no emulador Android:** ele **não** usa a localização do computador. A posição padrão é a sede do Google, na Califórnia, e o check-in em São Paulo mostra "Você está a 10.000 km". Antes de testar, abra **Extended controls (⋯) > Location**, busque o endereço da clínica, clique em **Set location** e reabra o app. Em um celular de verdade, vale o GPS do aparelho.
 
 ---
 
@@ -141,6 +141,22 @@ npx expo start
 4. Na aba **Clínicas**, cadastre pelo menos uma clínica e um profissional.
 
 > No emulador Android, a localização pode ser simulada em **Extended controls (⋯) > Location**.
+
+### Testes unitários
+
+```bash
+npm test
+```
+
+Os testes ficam em [`__tests__/`](__tests__) e usam **Jest** com o preset `jest-expo`. O Firebase e o GPS são trocados por *mocks*, então os testes rodam sem internet e sem aparelho.
+
+| Arquivo | O que garante |
+|---|---|
+| `distance.test.ts` | Haversine (distâncias conhecidas em São Paulo, simetria) e formatação em m/km |
+| `dates.test.ts` | Chave do dia, segunda-feira da semana, semana ISO (inclusive a virada de ano) e formatos de data |
+| `errors.test.ts` | Tradução dos erros do Firebase, `AppError`, Firestore offline e validação de e-mail |
+| `locationService.test.ts` | Permissão negada, GPS desligado, timeout de 15 s e busca de endereço (encontrado ou não) |
+| `checkinService.test.ts` | Check-in dentro do raio, recusa longe da clínica, check-in repetido no dia e falha de localização sem gravar nada |
 
 ---
 

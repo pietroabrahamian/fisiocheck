@@ -2,6 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Tipos globais do Jest (describe, it, expect) para os testes em __tests__
+    "types": ["jest"],
     "paths": {
       "@/*": ["./src/*"],
       // Tipos da versão React Native do Firebase Auth (onde existe getReactNativePersistence)
