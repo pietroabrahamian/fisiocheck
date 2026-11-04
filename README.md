@@ -4,6 +4,30 @@ App de **check-in para uma clínica de fisioterapia**, feito em React Native (Ex
 
 CheckPoint 3 — Mobile Application Development (FIAP).
 
+### Integrantes
+
+- Pietro Abrahamian
+- Lucas
+- Lucca
+- Pedro
+
+### Contas para teste
+
+O projeto Firebase já está configurado e estas contas já existem:
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Dono (admin) | `admin@gmail.com` | `Admin1234` |
+| Paciente | `paciente@gmail.com` | `Paciente1234` |
+
+A **Clínica FIAP** (Av. Paulista, 1106 - Bela Vista, São Paulo - SP) já está cadastrada. Para testar o check-in de onde você estiver:
+
+1. Entre como **dono**, abra a aba **Clínicas** e cadastre uma clínica nova tocando em **Usar minha localização atual** (ou digitando um endereço e tocando em **Buscar endereço**).
+2. Saia, entre como **paciente**, escolha o profissional e toque em **Fazer check-in**. O app registra a presença na clínica em que você está.
+3. Volte como dono e veja a aula no **Resumo semanal**.
+
+> No emulador Android dá para simular a posição em **Extended controls (⋯) > Location**. Com as coordenadas da FIAP Paulista, o check-in cai na Clínica FIAP.
+
 ---
 
 ## 1. Proposta do app
@@ -14,14 +38,14 @@ O dono da clínica paga os profissionais (fisioterapeutas/professores) **por aul
 
 ### A solução
 
-O próprio paciente faz o **check-in pelo celular** quando chega para a sessão. O app só aceita o check-in se o paciente **estiver fisicamente na clínica** (validação por localização), escolhendo com qual profissional vai fazer a aula. O dono acompanha tudo em um **resumo semanal**, com o total de aulas por profissional.
+O próprio paciente faz o **check-in pelo celular** quando chega para a sessão. O app só aceita o check-in se o paciente **estiver fisicamente em uma das clínicas** (validação por localização), escolhendo com qual profissional vai fazer a aula. O dono pode ter **várias unidades** e acompanha tudo em um **resumo semanal**, com o total de aulas por profissional e por clínica.
 
 ### Perfis de usuário
 
 | Perfil | Como é criado | O que pode fazer |
 |---|---|---|
 | **Paciente** | Cadastro pelo próprio app | Fazer check-in, ver as presenças da semana e o histórico |
-| **Dono** | Uma conta cadastrada pelo app que tem o campo `role` trocado para `"dono"` no Console do Firebase | Ver o resumo semanal, configurar a clínica e os profissionais |
+| **Dono** | Uma conta cadastrada pelo app que tem o campo `role` trocado para `"dono"` no Console do Firebase | Ver o resumo semanal, cadastrar as clínicas e os profissionais |
 
 > O papel de dono **não** pode ser escolhido pelo app: as regras do Firestore impedem que um usuário altere o próprio `role`.
 
@@ -36,19 +60,19 @@ O próprio paciente faz o **check-in pelo celular** quando chega para a sessão.
 6. Após o login, o app direciona para a área do perfil do usuário (paciente ou dono).
 
 **Paciente**
-1. **Check-in:** escolhe o profissional e toca em "Fazer check-in". O app pega a localização atual e só registra se estiver dentro do raio da clínica.
+1. **Check-in:** escolhe o profissional e toca em "Fazer check-in". O app pega a localização atual, descobre em qual clínica o paciente está e só registra se ele estiver dentro do raio dela.
 2. **Minha semana:** mostra quantas vezes foi à clínica na semana atual e em quais dias.
 3. **Histórico:** lista todos os check-ins já feitos (data e profissional).
 
 **Dono**
-1. **Resumo semanal:** total de aulas da semana, aulas por profissional (base do pagamento), presenças por paciente e a lista de check-ins. Permite navegar entre semanas.
-2. **Clínica:** define o local da clínica usando a localização atual do aparelho e o raio permitido para o check-in (em metros).
+1. **Resumo semanal:** total de aulas da semana, aulas por profissional (base do pagamento), aulas por clínica (quando há mais de uma), presenças por paciente e a lista de check-ins. Permite navegar entre semanas.
+2. **Clínicas:** cadastra e edita as unidades: nome, endereço e raio permitido para o check-in (em metros). O local vem do endereço digitado (**Buscar endereço**) ou da localização atual do aparelho.
 3. **Profissionais:** cadastra profissionais (nome e especialidade) e ativa/desativa quem aparece na lista do check-in.
 
 ### Regras de negócio
 
 - **Um check-in por paciente por dia.** O documento do check-in tem o ID `{uid}_{AAAA-MM-DD}`, então um segundo check-in no mesmo dia é recusado.
-- **Só vale na clínica.** A distância entre o paciente e a clínica precisa ser menor ou igual ao raio configurado pelo dono.
+- **Só vale na clínica.** A distância entre o paciente e a clínica precisa ser menor ou igual ao raio configurado pelo dono. Se ele estiver no raio de mais de uma, vale a mais próxima, e o check-in guarda qual foi.
 - **Só profissionais ativos** aparecem para o paciente escolher.
 - **Semana de segunda a domingo.** Cada check-in guarda a chave da semana (ex.: `2026-W44`), usada para contar as aulas.
 
@@ -64,18 +88,19 @@ O próprio paciente faz o **check-in pelo celular** quando chega para a sessão.
 | Sem internet | Alerta "Sem conexão" e tela de erro com botão "Tentar novamente" |
 | Permissão de localização negada | Mensagem com botão para abrir as configurações do aparelho |
 | GPS desligado / localização demorando | Mensagem pedindo para ativar a localização / tentar de novo |
-| Paciente longe da clínica | Mensagem com a distância atual e o raio permitido |
+| Paciente longe de todas as clínicas | Mensagem com a clínica mais próxima, a distância atual e o raio permitido |
 | Check-in repetido no dia | Mensagem "Você já fez check-in hoje" |
-| Clínica ainda não configurada / sem profissionais | Aviso no lugar do botão de check-in |
+| Nenhuma clínica cadastrada / sem profissionais | Aviso no lugar do botão de check-in |
+| Endereço da clínica não encontrado | Mensagem pedindo número, cidade e estado, ou para usar a localização atual |
 | Lista vazia (histórico, semana sem aulas) | Estado vazio com explicação |
-| Ação feita com sucesso | Confirmação na tela (check-in registrado, clínica salva, profissional cadastrado) |
+| Ação feita com sucesso | Confirmação na tela (check-in registrado, clínica cadastrada ou atualizada, profissional cadastrado) |
 
 ### Telas
 
 | Paciente | Dono |
 |---|---|
 | Check-in (com "Minha semana") | Resumo semanal |
-| Histórico | Clínica e profissionais |
+| Histórico | Clínicas e profissionais |
 | Perfil (logout) | Perfil (logout) |
 
 ---
@@ -111,7 +136,7 @@ npx expo start
 1. Cadastre uma conta pelo app.
 2. No Console do Firebase, abra **Firestore > users > (uid da conta)** e troque o campo `role` de `"paciente"` para `"dono"`.
 3. Saia e entre de novo no app: ele abre a área do dono.
-4. Na aba **Clínica**, defina o local da clínica e cadastre pelo menos um profissional.
+4. Na aba **Clínicas**, cadastre pelo menos uma clínica e um profissional.
 
 > No emulador Android, a localização pode ser simulada em **Extended controls (⋯) > Location**.
 
@@ -129,7 +154,7 @@ app/                         Telas (expo-router: cada arquivo vira uma rota)
   (app)/                     Área logada (só para quem está logado)
     index.tsx                Lê o perfil e manda para /paciente ou /dono
     paciente/                Abas do paciente: check-in, histórico, perfil
-    dono/                    Abas do dono: resumo, clínica, perfil
+    dono/                    Abas do dono: resumo, clínicas, perfil
 src/
   config/                    Inicialização do Firebase e do QueryClient
   contexts/AuthContext.tsx   Usuário logado (onAuthStateChanged)
@@ -166,9 +191,9 @@ As telas não falam direto com o Firebase: **tela → hook (TanStack Query) → 
 | Coleção | Documento | Conteúdo |
 |---|---|---|
 | `users` | `{uid}` | `name`, `email`, `role` |
-| `clinica` | `config` | `name`, `latitude`, `longitude`, `radiusMeters` |
+| `clinicas` | ID automático | `name`, `address`, `latitude`, `longitude`, `radiusMeters` |
 | `profissionais` | ID automático | `name`, `specialty`, `active` |
-| `checkins` | `{uid}_{AAAA-MM-DD}` | paciente, profissional, `date`, `week`, `distanceMeters`, `createdAt` |
+| `checkins` | `{uid}_{AAAA-MM-DD}` | paciente, clínica, profissional, `date`, `week`, `distanceMeters`, `createdAt` |
 
 - **Funções usadas:** `doc`, `getDoc`, `setDoc` (aula 4), além de `collection`, `addDoc`, `updateDoc`, `getDocs`, `query`/`where` e `serverTimestamp`.
 - **ID com significado:** o ID do check-in junta o uid e a data (`{uid}_{data}`). Isso garante **um check-in por dia**. Em [`checkinService.ts`](src/services/checkinService.ts), o `runTransaction` lê esse documento e só grava se ele ainda não existir. Assim, nem dois toques rápidos no botão criam duas presenças.
@@ -185,9 +210,9 @@ O arquivo [`firestore.rules`](firestore.rules) é o que de fato protege os dados
   - só para o próprio paciente;
   - com o ID exatamente `{uid}_{date}`;
   - com `createdAt == request.time`;
-  - para um profissional que existe (`exists()`).
+  - para uma clínica e um profissional que existem (`exists()`).
 - **Check-in gravado:** não pode ser editado nem apagado.
-- **Clínica e profissionais:** só o dono altera, e com os campos validados (por exemplo, raio entre 20 e 2000 m).
+- **Clínicas e profissionais:** só o dono cria e altera, e com os campos validados (por exemplo, raio entre 20 e 2000 m).
 
 ### Localização (expo-location)
 
@@ -196,9 +221,8 @@ Visto na aula 6. Fica em [`locationService.ts`](src/services/locationService.ts)
 1. **Permissão:** `requestForegroundPermissionsAsync` pede acesso. Se for negado, o app lança `LocationPermissionError`, e a tela mostra o botão "Abrir configurações" (`Linking.openSettings()`).
 2. **GPS ligado:** `hasServicesEnabledAsync` confere se a localização do aparelho está ativa.
 3. **Posição atual:** `getCurrentPositionAsync` pega a posição, com um **timeout de 15 s** para não deixar o paciente esperando para sempre.
-4. **Distância:** a fórmula de Haversine ([`distance.ts`](src/utils/distance.ts)) calcula os metros até a clínica. Se passar do raio, o check-in é recusado e o app mostra a distância.
-
-O dono usa o mesmo serviço para definir o local da clínica com a localização atual dele.
+4. **Distância:** a fórmula de Haversine ([`distance.ts`](src/utils/distance.ts)) calcula os metros até cada clínica. Em [`checkinService.ts`](src/services/checkinService.ts), o app escolhe a clínica em cujo raio o paciente está. Se não estiver em nenhuma, o check-in é recusado e o app mostra a distância até a mais próxima.
+5. **Endereço ↔ coordenadas:** no cadastro da clínica, `geocodeAsync` transforma o endereço digitado em latitude/longitude, e `reverseGeocodeAsync` preenche o endereço quando o dono usa a localização atual.
 
 ### TanStack Query
 
